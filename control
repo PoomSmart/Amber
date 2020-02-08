@@ -1,6 +1,6 @@
 Package: com.ps.amber
 Name: Amber
-Depends: mobilesubstrate, firmware (>= 7.0), gsc.camera-flash, com.a3tweaks.flipswitch, firmware (<< 11.0) | com.opa334.ccsupport
+Depends: mobilesubstrate, preferenceloader, firmware (>= 7.0), gsc.camera-flash, firmware (>= 11.0) | com.a3tweaks.flipswitch, firmware (<< 11.0) | com.opa334.ccsupport
 Version: 0.0.1
 Architecture: iphoneos-arm
 Description: Amber-ify your LED torch.

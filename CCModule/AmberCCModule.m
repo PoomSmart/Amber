@@ -12,7 +12,7 @@
 }
 
 - (BOOL)isSelected {
-    Boolean keyExist;
+    Boolean keyExist = NO;
     Boolean enabled = CFPreferencesGetAppBooleanValue(key, kDomain, &keyExist);
     return !keyExist ? NO : enabled;
 }
