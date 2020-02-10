@@ -8,7 +8,7 @@
 @implementation AmberSwitch
 
 - (FSSwitchState)stateForSwitchIdentifier:(NSString *)switchIdentifier {
-    Boolean keyExist;
+    Boolean keyExist = NO;
     Boolean enabled = CFPreferencesGetAppBooleanValue(key, kDomain, &keyExist);
     if (!keyExist)
         return FSSwitchStateOff;
