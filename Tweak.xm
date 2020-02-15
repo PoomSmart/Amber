@@ -52,15 +52,18 @@ int (*SetTorchLevelWithGroup)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureGr
 int (*SetTorchColor)(CFMutableDictionaryRef, HXISPCaptureStreamRef, HXISPCaptureDeviceRef) = NULL;
 SInt32 (*GetCFPreferenceNumber)(CFStringRef const, CFStringRef const, SInt32) = NULL;
 
-BOOL overrideLevels = NO;
 int (*SetIndividualTorchLEDLevels)(void *, unsigned int, unsigned int) = NULL;
+
+Boolean enabled() {
+    return GetCFPreferenceNumber(key, kDomain, 0) != 0;
+}
 
 Boolean both() {
     return GetCFPreferenceNumber(bothKey, kDomain, 0) != 0;
 }
 
-void SetTorchLevelHook(BOOL enabled, int result, CFNumberRef level, HXISPCaptureStreamRef stream, HXISPCaptureDeviceRef device) {
-    if (!result && level && SetIndividualTorchLEDLevels == NULL && enabled) {
+void SetTorchLevelHook(int result, CFNumberRef level, HXISPCaptureStreamRef stream, HXISPCaptureDeviceRef device) {
+    if (!result && level && SetIndividualTorchLEDLevels == NULL && enabled()) {
         // If torch level setting is successful, we can override the torch color
         CFMutableDictionaryRef dict = CFDictionaryCreateMutable(NULL, 0, &kCFCopyStringDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
         int val = 100; // from 0 (coolest) to 100 (warmest)
@@ -71,16 +74,13 @@ void SetTorchLevelHook(BOOL enabled, int result, CFNumberRef level, HXISPCapture
         CFRelease(threshold);
         CFRelease(dict);
     }
-    overrideLevels = NO;
 }
 
 %group SetTorchLevelHook
 
 %hookf(int, SetTorchLevel, CFNumberRef level, HXISPCaptureStreamRef stream, HXISPCaptureDeviceRef device) {
-    BOOL enabled = GetCFPreferenceNumber(key, kDomain, 0);
-    overrideLevels = SetIndividualTorchLEDLevels != NULL && enabled;
     int result = %orig(level, stream, device);
-    SetTorchLevelHook(enabled, result, level, stream, device);
+    SetTorchLevelHook(result, level, stream, device);
     return result;
 }
 
@@ -89,10 +89,8 @@ void SetTorchLevelHook(BOOL enabled, int result, CFNumberRef level, HXISPCapture
 %group SetTorchLevelWithGroupHook
 
 %hookf(int, SetTorchLevelWithGroup, CFNumberRef level, HXISPCaptureStreamRef stream, HXISPCaptureGroupRef group, HXISPCaptureDeviceRef device) {
-    BOOL enabled = GetCFPreferenceNumber(key, kDomain, 0);
-    overrideLevels = SetIndividualTorchLEDLevels != NULL && enabled;
     int result = %orig(level, stream, group, device);
-    SetTorchLevelHook(enabled, result, level, stream, device);
+    SetTorchLevelHook(result, level, stream, device);
     return result;
 }
 
@@ -102,7 +100,7 @@ void SetTorchLevelHook(BOOL enabled, int result, CFNumberRef level, HXISPCapture
 
 int (*SetTorchColorMode)(void *, unsigned int, unsigned short, unsigned short);
 %hookf(int, SetTorchColorMode, void *arg0, unsigned int arg1, unsigned short mode, unsigned short level) {
-    return %orig(arg0, arg1, both() ? 1 : mode, level);
+    return %orig(arg0, arg1, enabled() && both() ? 1 : mode, level);
 }
 
 %end
@@ -112,9 +110,7 @@ int (*SetTorchColorMode)(void *, unsigned int, unsigned short, unsigned short);
 %hookf(int, SetIndividualTorchLEDLevels, void *arg0, unsigned int arg1, unsigned int levels) {
     // both: 0xhh00hh00 -> 0xhhhhhhhh
     // amber only: 0xhh00hh00 -> 0x00hh00hh
-    if (overrideLevels)
-        levels = both() ? (levels | (levels >> 8)) : (levels >> 8);
-    return %orig(arg0, arg1, levels);
+    return %orig(arg0, arg1, levels && enabled() ? (both() ? (levels | (levels >> 8)) : (levels >> 8)) : levels);
 }
 
 %end
