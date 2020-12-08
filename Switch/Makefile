@@ -4,6 +4,7 @@ include $(THEOS)/makefiles/common.mk
 
 BUNDLE_NAME = Amber
 Amber_FILES = Switch.xm
+Amber_CFLAGS = -fobjc-arc
 Amber_LIBRARIES = flipswitch
 Amber_FRAMEWORKS = UIKit
 Amber_INSTALL_PATH = /Library/Switches
