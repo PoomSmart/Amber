@@ -8,8 +8,11 @@
 @property(assign) NSUInteger level;
 @end
 
-@interface CCUISliderModuleBackgroundViewController : UIViewController
-- (void)setGlyphImage:(UIImage *)image;
+@interface CCUICustomContentModuleBackgroundViewController : UIViewController
+- (void)setHeaderGlyphImage:(UIImage *)image;
+@end
+
+@interface CCUISliderModuleBackgroundViewController : CCUICustomContentModuleBackgroundViewController
 @end
 
 @interface CCUIFlashlightBackgroundViewController : CCUISliderModuleBackgroundViewController
@@ -32,7 +35,6 @@
     s.numberOfTouchesRequired = 1;
     s.direction = UISwipeGestureRecognizerDirectionUp;
     [self.view addGestureRecognizer:s];
-    [s release];
 }
 
 %new
@@ -60,20 +62,22 @@
 }
 
 - (void)_updateGlyphForFlashlightLevel:(NSUInteger)level {
-    NSBundle *bundle = [[[NSBundle bundleForClass:[self class]] retain] autorelease];
-    UIImage *image = [[[UIImage imageNamed:level ? @"FlashlightOn" : @"FlashlightOff" inBundle:bundle] retain] autorelease];
-    UIColor *flatColor = nil;
+    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+    UIImage *image = [UIImage imageNamed:level ? @"FlashlightOn" : @"FlashlightOff" inBundle:bundle];
+    UIColor *flatColor;
     Boolean both_ = [self bothActive];
     if (!level || ![self amberActive])
-        flatColor = [[UIColor.whiteColor retain] autorelease];
+        flatColor = UIColor.whiteColor;
     else {
         if (both_)
-            flatColor = [[[UIColor colorWithRed:1.00 green:0.84 blue:0.59 alpha:1.0] retain] autorelease];
+            flatColor = [UIColor colorWithRed:1.00 green:0.84 blue:0.59 alpha:1.0];
         else
-            flatColor = [[UIColor.systemOrangeColor retain] autorelease];
+            flatColor = UIColor.systemOrangeColor;
     }
-    UIImage *flatImage = [[[image _flatImageWithColor:flatColor] retain] autorelease];
-    [self setGlyphImage:flatImage];
+    UIImage *flatImage = [image _flatImageWithColor:flatColor];
+    [self setHeaderGlyphImage:flatImage];
+    UIImageView *imageView = [self valueForKey:@"_headerImageView"];
+    imageView.tintColor = flatColor;
 }
 
 %end
