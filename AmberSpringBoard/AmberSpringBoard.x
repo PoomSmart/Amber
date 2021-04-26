@@ -10,6 +10,7 @@
 
 @interface CCUICustomContentModuleBackgroundViewController : UIViewController
 - (void)setHeaderGlyphImage:(UIImage *)image;
+- (void)setGlyphImage:(UIImage *)image;
 @end
 
 @interface CCUISliderModuleBackgroundViewController : CCUICustomContentModuleBackgroundViewController
@@ -75,7 +76,10 @@
             flatColor = UIColor.systemOrangeColor;
     }
     UIImage *flatImage = [image _flatImageWithColor:flatColor];
-    [self setHeaderGlyphImage:flatImage];
+    if ([self respondsToSelector:@selector(setHeaderGlyphImage:)])
+        [self setHeaderGlyphImage:flatImage];
+    else
+        [self setGlyphImage:flatImage];
     UIImageView *imageView = [self valueForKey:@"_headerImageView"];
     imageView.tintColor = flatColor;
 }
