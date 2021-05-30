@@ -1,4 +1,5 @@
 #import "AmberCCModule.h"
+#import <CoreFoundation/CoreFoundation.h>
 #import <UIKit/UIColor+Private.h>
 
 @implementation AmberCCModule
