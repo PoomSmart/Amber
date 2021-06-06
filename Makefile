@@ -1,11 +1,11 @@
-PACKAGE_VERSION = 0.0.5.1
-TARGET = iphone:latest:7.0
+PACKAGE_VERSION = 1.0.0
+TARGET = iphone:clang:latest:7.0
 ARCHS = arm64 arm64e
 
 include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME = Amber
-Amber_FILES = Tweak.xm
+$(TWEAK_NAME)_FILES = Tweak.xm
 
 SUBPROJECTS = AmberSpringBoard CCModule Switch
 

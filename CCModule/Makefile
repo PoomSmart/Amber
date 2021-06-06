@@ -4,9 +4,9 @@ ARCHS = arm64 arm64e
 include $(THEOS)/makefiles/common.mk
 
 BUNDLE_NAME = AmberCCModule
-AmberCCModule_BUNDLE_EXTENSION = bundle
-AmberCCModule_FILES = AmberCCModule.m
-AmberCCModule_PRIVATE_FRAMEWORKS = ControlCenterUIKit
-AmberCCModule_INSTALL_PATH = /Library/ControlCenter/Bundles/
+$(BUNDLE_NAME)_BUNDLE_EXTENSION = bundle
+$(BUNDLE_NAME)_FILES = AmberCCModule.m
+$(BUNDLE_NAME)_PRIVATE_FRAMEWORKS = ControlCenterUIKit
+$(BUNDLE_NAME)_INSTALL_PATH = /Library/ControlCenter/Bundles/
 
 include $(THEOS_MAKE_PATH)/bundle.mk
