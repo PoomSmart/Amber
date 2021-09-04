@@ -31,7 +31,7 @@
 - (UIColor *)primaryColorForSwitchIdentifier:(NSString *)switchIdentifier {
     if ([self bothActive])
         return [UIColor colorWithRed:1.00 green:0.84 blue:0.59 alpha:1.0];
-    return UIColor.systemOrangeColor;
+    return [UIColor systemOrangeColor];
 }
 
 - (BOOL)hasAlternateActionForSwitchIdentifier:(NSString *)switchIdentifier {

@@ -19,7 +19,6 @@
 }
 
 - (void)setSelected:(BOOL)selected {
-    [super refreshState];
     CFPreferencesSetAppValue(key, selected ? kCFBooleanTrue : kCFBooleanFalse, kDomain);
     CFPreferencesAppSynchronize(kDomain);
 }
