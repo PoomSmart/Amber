@@ -30,11 +30,13 @@
 
 - (void)viewDidLoad {
     %orig;
-    self.view.userInteractionEnabled = YES;
-    UISwipeGestureRecognizer *s = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(swipeFlashlightGlyphView:)];
-    s.numberOfTouchesRequired = 1;
-    s.direction = UISwipeGestureRecognizerDirectionUp;
-    [self.view addGestureRecognizer:s];
+    if (self.viewLoaded) {
+        self.view.userInteractionEnabled = YES;
+        UISwipeGestureRecognizer *s = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(swipeFlashlightGlyphView:)];
+        s.numberOfTouchesRequired = 1;
+        s.direction = UISwipeGestureRecognizerDirectionUp;
+        [self.view addGestureRecognizer:s];
+    }
 }
 
 %new
