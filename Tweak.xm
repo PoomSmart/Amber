@@ -6,6 +6,8 @@
 #import <mach/port.h>
 #import <mach/kern_return.h>
 
+#define MAX_HVER 15
+
 // Tweak
 // 0 - white only (default)
 // 1 - both
@@ -40,16 +42,12 @@ SInt32 (*GetCFPreferenceNumber)(CFStringRef const, CFStringRef const, SInt32) = 
 
 int (*SetIndividualTorchLEDLevels)(void *, unsigned int, unsigned int) = NULL;
 
-static Boolean enabled() {
-    return GetCFPreferenceNumber(key, kDomain, 0) != 0;
-}
-
-static Boolean both() {
-    return GetCFPreferenceNumber(bothKey, kDomain, 0) != 0;
+static SInt32 amberMode() {
+    return GetCFPreferenceNumber(amberModeKey, kDomain, PSAmberModeDefault);
 }
 
 static void SetTorchLevelHook(int result, CFNumberRef level, HXISPCaptureStreamRef stream, HXISPCaptureDeviceRef device) {
-    if (!result && level && SetIndividualTorchLEDLevels == NULL && enabled()) {
+    if (!result && level && SetIndividualTorchLEDLevels == NULL && amberMode()) {
         // If torch level setting is successful, we can override the torch color
         CFMutableDictionaryRef dict = CFDictionaryCreateMutable(NULL, 0, &kCFCopyStringDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
         int val = 100; // from 0 (coolest) to 100 (warmest)
@@ -86,7 +84,7 @@ static void SetTorchLevelHook(int result, CFNumberRef level, HXISPCaptureStreamR
 
 int (*SetTorchColorMode)(void *, unsigned int, unsigned short, unsigned short);
 %hookf(int, SetTorchColorMode, void *arg0, unsigned int arg1, unsigned short mode, unsigned short level) {
-    return %orig(arg0, arg1, enabled() && both() ? 1 : mode, level);
+    return %orig(arg0, arg1, amberMode() == PSAmberModeBoth ? 1 : mode, level);
 }
 
 %end
@@ -96,7 +94,8 @@ int (*SetTorchColorMode)(void *, unsigned int, unsigned short, unsigned short);
 %hookf(int, SetIndividualTorchLEDLevels, void *arg0, unsigned int arg1, unsigned int levels) {
     // both: 0xhh00hh00 -> 0xhhhhhhhh
     // amber only: 0xhh00hh00 -> 0x00hh00hh
-    unsigned int finalLevels = levels && enabled() ? (both() ? (levels | (levels >> 8)) : (levels >> 8)) : levels;
+    PSAmberMode mode = amberMode();
+    unsigned int finalLevels = levels && mode ? (mode == PSAmberModeBoth ? (levels | (levels >> 8)) : (levels >> 8)) : levels;
     return %orig(arg0, arg1, finalLevels);
 }
 
@@ -112,7 +111,7 @@ int (*SetTorchColorMode)(void *, unsigned int, unsigned short, unsigned short);
         kern_return_t (*IOObjectRelease)(mach_port_t object) = (kern_return_t (*)(mach_port_t))dlsym(IOKit, "IOObjectRelease");
         if (kIOMasterPortDefault && IOServiceGetMatchingService && IOObjectRelease) {
             char AppleHXCamIn[14];
-            for (HVer = 14; HVer > 9; --HVer) {
+            for (HVer = MAX_HVER; HVer > 9; --HVer) {
                 sprintf(AppleHXCamIn, "AppleH%dCamIn", HVer);
                 mach_port_t hx = IOServiceGetMatchingService(*kIOMasterPortDefault, IOServiceMatching(AppleHXCamIn));
                 if (hx) {

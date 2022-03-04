@@ -4,7 +4,7 @@
 
 @interface SBUIFlashlightController : NSObject
 + (instancetype)sharedInstance;
-@property(assign) NSUInteger level;
+@property (assign) NSUInteger level;
 @end
 
 @interface CCUICustomContentModuleBackgroundViewController : UIViewController
@@ -19,17 +19,13 @@
 - (void)_updateGlyphForFlashlightLevel:(NSUInteger)level;
 @end
 
-@interface CCUIFlashlightBackgroundViewController (Amber)
-- (BOOL)amberActive;
-- (BOOL)bothActive;
-@end
-
 %group SpringBoard_Flashlight
 
 %hook CCUIFlashlightBackgroundViewController
 
 - (void)viewDidLoad {
     %orig;
+    // FIXME: This still causes stack overflow on first run
     if (self.viewLoaded) {
         self.view.userInteractionEnabled = YES;
         UISwipeGestureRecognizer *s = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(swipeFlashlightGlyphView:)];
@@ -40,25 +36,12 @@
 }
 
 %new
-- (BOOL)amberActive {
-    Boolean keyExist = NO;
-    Boolean value = CFPreferencesGetAppBooleanValue(key, kDomain, &keyExist);
-    return keyExist ? value : NO;
-}
-
-%new
-- (BOOL)bothActive {
-    Boolean keyExist = NO;
-    Boolean value = CFPreferencesGetAppBooleanValue(bothKey, kDomain, &keyExist);
-    return keyExist ? value : NO;
-}
-
-%new
 - (void)swipeFlashlightGlyphView:(id)sender {
-    if (![self amberActive]) return;
-    NSUInteger level = ((SBUIFlashlightController *)[objc_getClass("SBUIFlashlightController") sharedInstance]).level;
+    NSUInteger level = ((SBUIFlashlightController *)[%c(SBUIFlashlightController) sharedInstance]).level;
     if (!level) return;
-    CFPreferencesSetAppValue(bothKey, [self bothActive] ? kCFBooleanFalse : kCFBooleanTrue, kDomain);
+    PSAmberMode amberMode = (CFPreferencesGetAppIntegerValue(amberModeKey, kDomain, NULL) + 1) % PSAmberModeCount;
+    CFNumberRef numberRef = CFNumberCreate(NULL, kCFNumberSInt32Type, &amberMode);
+    CFPreferencesSetAppValue(amberModeKey, numberRef, kDomain);
     CFPreferencesAppSynchronize(kDomain);
     [self _updateGlyphForFlashlightLevel:level];
 }
@@ -67,15 +50,11 @@
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
     UIImage *image = [UIImage imageNamed:level ? @"FlashlightOn" : @"FlashlightOff" inBundle:bundle];
     UIColor *flatColor;
-    Boolean both_ = [self bothActive];
-    if (!level || ![self amberActive])
+    PSAmberMode amberMode = CFPreferencesGetAppIntegerValue(amberModeKey, kDomain, NULL);
+    if (!level || amberMode == PSAmberModeDefault)
         flatColor = UIColor.whiteColor;
-    else {
-        if (both_)
-            flatColor = [UIColor colorWithRed:1.00 green:0.84 blue:0.59 alpha:1.0];
-        else
-            flatColor = UIColor.systemOrangeColor;
-    }
+    else
+        flatColor = amberMode == PSAmberModeBoth ? [UIColor colorWithRed:1.00 green:0.84 blue:0.59 alpha:1.0] : UIColor.systemOrangeColor;
     UIImage *flatImage = [image _flatImageWithColor:flatColor];
     if ([self respondsToSelector:@selector(setHeaderGlyphImage:)])
         [self setHeaderGlyphImage:flatImage];
