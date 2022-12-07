@@ -25,13 +25,12 @@
 
 - (void)viewDidLoad {
     %orig;
-    // FIXME: This still causes stack overflow on first run
-    if (self.viewLoaded) {
-        self.view.userInteractionEnabled = YES;
+    if (self.viewIfLoaded) {
+        self.viewIfLoaded.userInteractionEnabled = YES;
         UISwipeGestureRecognizer *s = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(swipeFlashlightGlyphView:)];
         s.numberOfTouchesRequired = 1;
         s.direction = UISwipeGestureRecognizerDirectionUp;
-        [self.view addGestureRecognizer:s];
+        [self.viewIfLoaded addGestureRecognizer:s];
     }
 }
 
