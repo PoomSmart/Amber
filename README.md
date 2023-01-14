@@ -1,4 +1,4 @@
-Amber (iOS 11+)
+Amber
 =========
 Amber-ify your LED torch.
 
