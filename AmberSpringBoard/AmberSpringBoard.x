@@ -8,6 +8,7 @@
 @end
 
 @interface CCUICustomContentModuleBackgroundViewController : UIViewController
+- (void)setHeaderTitle:(NSString *)title;
 - (void)setHeaderGlyphImage:(UIImage *)image;
 - (void)setGlyphImage:(UIImage *)image;
 @end
@@ -21,21 +22,24 @@
 
 %group SpringBoard_Flashlight
 
-%hook CCUIFlashlightBackgroundViewController
-
-- (void)viewDidLoad {
-    %orig;
-    if (self.viewIfLoaded) {
-        self.viewIfLoaded.userInteractionEnabled = YES;
-        UISwipeGestureRecognizer *s = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(swipeFlashlightGlyphView:)];
-        s.numberOfTouchesRequired = 1;
-        s.direction = UISwipeGestureRecognizerDirectionUp;
-        [self.viewIfLoaded addGestureRecognizer:s];
+static NSString *getModeLabel(PSAmberMode mode) {
+    switch (mode) {
+        case PSAmberModeOrange:
+            return @"Amber";
+        case PSAmberModeBoth:
+            return @"All";
+        default:
+            return @"Default";
     }
 }
 
+BOOL didAddIconGesture = NO;
+BOOL didAddLabelGesture = NO;
+
+%hook CCUIFlashlightBackgroundViewController
+
 %new
-- (void)swipeFlashlightGlyphView:(id)sender {
+- (void)tapFlashlightGlyphView:(id)sender {
     NSUInteger level = ((SBUIFlashlightController *)[%c(SBUIFlashlightController) sharedInstance]).level;
     if (!level) return;
     PSAmberMode amberMode = (CFPreferencesGetAppIntegerValue(amberModeKey, kDomain, NULL) + 1) % PSAmberModeCount;
@@ -60,7 +64,23 @@
     else
         [self setGlyphImage:flatImage];
     UIImageView *imageView = [self valueForKey:@"_headerImageView"];
+    UILabel *titleLabel = [self valueForKey:@"_headerTitleLabel"];
     imageView.tintColor = flatColor;
+    imageView.userInteractionEnabled = titleLabel.userInteractionEnabled = level > 0;
+    NSString *headerTitle = level ? [NSString stringWithFormat:@"Mode: %@, Tap to change", getModeLabel(amberMode)] : @"";
+    [self setHeaderTitle:headerTitle];
+    if (level) {
+        if (!didAddIconGesture) {
+            UITapGestureRecognizer *t = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapFlashlightGlyphView:)];
+            [imageView addGestureRecognizer:t];
+            didAddIconGesture = YES;
+        }
+        if (!didAddLabelGesture) {
+            UITapGestureRecognizer *t = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapFlashlightGlyphView:)];
+            [titleLabel addGestureRecognizer:t];
+            didAddLabelGesture = YES;
+        }
+    }
 }
 
 %end

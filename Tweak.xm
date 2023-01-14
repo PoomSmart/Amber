@@ -6,7 +6,7 @@
 #import <mach/port.h>
 #import <mach/kern_return.h>
 
-#define MAX_HVER 15
+#define MAX_HVER 16
 
 // Tweak
 // 0 - white only (default)
