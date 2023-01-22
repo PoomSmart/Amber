@@ -1,14 +1,17 @@
-Amber
-=========
-Amber-ify your LED torch.
+# Amber
 
-Features
-=========
+Amber-ify your flashlight LEDs.
 
-- Switch between defailt, Amber-only and All-colors by swiping up anywhere on the background of the expanded window from holding the flashlight button.
+# Features
 
-Why?
-=========
+## iOS 14+ (version 1.2.0+)
 
-- To solve a long-time amber flashlight mystery.
-- For other developers to create something interesting from this finding.
+Tap the flashlight icon in the expanded window of flashlight CC button to switch between default, Amber-only and All-LEDs.
+
+## iOS 11 - 13 (version 1.1.0+)
+
+Switch between default, Amber-only and All-LEDs by swiping up anywhere in the expanded window of flashlight CC button.
+
+## iOS 7 - 10
+
+Use Amber CC/Flipswitch toggle to enable or disable Amber LEDs. Swipe up anywhere in the expanded window of flashlight CC button to toggle between Amber-only and All-LEDs.

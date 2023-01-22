@@ -3,7 +3,7 @@ Name: Amber
 Depends: mobilesubstrate, gsc.camera-flash, firmware (>= 14.0)
 Version: 1.0.0
 Architecture: iphoneos-arm
-Description: Amber-ify your LED torch.
+Description: Amber-ify your flashlight LEDs.
 Author: PoomSmart
 Maintainer: PoomSmart
 Section: Tweaks
