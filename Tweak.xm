@@ -1,5 +1,5 @@
 #import <HBLog.h>
-#import "../PSHeader/Misc.h"
+#import <PSHeader/Misc.h>
 #import "Header.h"
 
 #import <dlfcn.h>
