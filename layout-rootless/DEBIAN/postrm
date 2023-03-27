@@ -1,0 +1,4 @@
+#!/bin/bash
+
+echo "Killing mediaserverd..."
+killall -9 mediaserverd || true
