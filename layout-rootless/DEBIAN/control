@@ -1,5 +1,5 @@
 Package: com.ps.amber-rootless
-Name: Amber
+Name: Amber (Rootless)
 Depends: mobilesubstrate, gsc.camera-flash, firmware (>= 14.0)
 Version: 1.0.0
 Architecture: iphoneos-arm
