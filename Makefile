@@ -1,9 +1,3 @@
-ROOTLESS ?= 0
-
-ifeq ($(ROOTLESS),1)
-	THEOS_LAYOUT_DIR_NAME = layout-rootless
-	THEOS_PACKAGE_SCHEME = rootless
-endif
 TARGET = iphone:clang:14.5:14.0
 PACKAGE_VERSION = 1.2.0
 
