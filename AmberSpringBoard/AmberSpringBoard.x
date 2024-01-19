@@ -75,11 +75,10 @@ BOOL didAddLabelGesture = NO;
             [imageView addGestureRecognizer:t];
             didAddIconGesture = YES;
         }
-        if (!didAddLabelGesture) {
-            UITapGestureRecognizer *t = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapFlashlightGlyphView:)];
-            [titleLabel addGestureRecognizer:t];
-            didAddLabelGesture = YES;
-        }
+        for (UIGestureRecognizer *gesture in titleLabel.gestureRecognizers)
+            [titleLabel removeGestureRecognizer:gesture];
+        UITapGestureRecognizer *t = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapFlashlightGlyphView:)];
+        [titleLabel addGestureRecognizer:t];
     }
 }
 
