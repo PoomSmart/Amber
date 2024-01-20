@@ -2,6 +2,8 @@
 
 Amber-ify your flashlight LEDs.
 
+Medium blog: https://medium.com/@thatchaponunprasert/demystifying-iphones-amber-flashlight-519352db10bd
+
 # Features
 
 ## iOS 14+ (version 1.2.0+)
