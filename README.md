@@ -2,7 +2,7 @@
 
 Amber-ify your flashlight LEDs.
 
-Medium blog: https://medium.com/@thatchaponunprasert/demystifying-iphones-amber-flashlight-519352db10bd
+Read the [Medium blog](https://medium.com/@thatchaponunprasert/demystifying-iphones-amber-flashlight-519352db10bd)
 
 # Features
 
