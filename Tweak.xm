@@ -24,7 +24,7 @@
     rely on the scene condition, but surprisingly presents another neat solution to enabling the amber light.
     The function is SetIndividualTorchLEDLevels() that can literally be used to manipulate the brightness level of each individual LED.
 
-    The levels are represented as a single 32-bit integer. This integer is seperated into 8-bit chunks.
+    The levels are represented as a single 32-bit integer. This integer is separated into 8-bit chunks.
     From left to right, the 1st and the 3rd chunks specify the brightness level of the white LEDs (0x00 as min and 0xFF as max).
     Similarly, the 2nd and the 4th chunks specify the brightness level of the amber LEDs (0x00 as min and 0xFF as max).
     Easy enough, having only amber light requires us to set the integer level to be 0x00hh00hh.

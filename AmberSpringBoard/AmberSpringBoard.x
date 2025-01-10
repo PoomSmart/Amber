@@ -38,7 +38,7 @@ BOOL didAddLabelGesture = NO;
 
 %hook CCUIFlashlightBackgroundViewController
 
-%new
+%new(v@:@)
 - (void)tapFlashlightGlyphView:(id)sender {
     NSUInteger level = ((SBUIFlashlightController *)[%c(SBUIFlashlightController) sharedInstance]).level;
     if (!level) return;
