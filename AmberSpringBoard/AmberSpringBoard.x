@@ -1,6 +1,7 @@
 #import "../Header.h"
 #import <UIKit/UIColor+Private.h>
 #import <UIKit/UIImage+Private.h>
+#import <version.h>
 
 @interface SBUIFlashlightController : NSObject
 + (instancetype)sharedInstance;
@@ -64,21 +65,23 @@ BOOL didAddLabelGesture = NO;
     else
         [self setGlyphImage:flatImage];
     UIImageView *imageView = [self valueForKey:@"_headerImageView"];
-    UILabel *titleLabel = [self valueForKey:@"_headerTitleLabel"];
+    UIView *viewWithGesture = IS_IOS_OR_NEWER(iOS_14_0) ? [self valueForKey:@"_headerTitleLabel"] : imageView;
     imageView.tintColor = flatColor;
-    imageView.userInteractionEnabled = titleLabel.userInteractionEnabled = level > 0;
-    NSString *headerTitle = level ? [NSString stringWithFormat:@"Mode: %@, Tap to change", getModeLabel(amberMode)] : @"";
-    [self setHeaderTitle:headerTitle];
+    imageView.userInteractionEnabled = viewWithGesture.userInteractionEnabled = level > 0;
+    if ([self respondsToSelector:@selector(setHeaderTitle:)]) {
+        NSString *headerTitle = level ? [NSString stringWithFormat:@"Mode: %@, Tap to change", getModeLabel(amberMode)] : @"";
+        [self setHeaderTitle:headerTitle];
+    }
     if (level) {
         if (!didAddIconGesture) {
             UITapGestureRecognizer *t = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapFlashlightGlyphView:)];
             [imageView addGestureRecognizer:t];
             didAddIconGesture = YES;
         }
-        for (UIGestureRecognizer *gesture in titleLabel.gestureRecognizers)
-            [titleLabel removeGestureRecognizer:gesture];
+        for (UIGestureRecognizer *gesture in viewWithGesture.gestureRecognizers)
+            [viewWithGesture removeGestureRecognizer:gesture];
         UITapGestureRecognizer *t = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapFlashlightGlyphView:)];
-        [titleLabel addGestureRecognizer:t];
+        [viewWithGesture addGestureRecognizer:t];
     }
 }
 
