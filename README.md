@@ -6,7 +6,7 @@ Read the [Medium blog](https://medium.com/@thatchaponunprasert/demystifying-ipho
 
 # Features
 
-## iOS 14+ (version 1.2.0+)
+## iOS 13+ (version 1.2.3+)
 
 Tap the flashlight icon in the expanded window of flashlight CC button to switch between default, Amber-only and All-LEDs.
 
