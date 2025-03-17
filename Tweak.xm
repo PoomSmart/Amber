@@ -6,8 +6,6 @@
 #import <mach/port.h>
 #import <mach/kern_return.h>
 
-#define MAX_HVER 16
-
 // Tweak
 // 0 - white only (default)
 // 1 - both
@@ -28,7 +26,7 @@
     From left to right, the 1st and the 3rd chunks specify the brightness level of the white LEDs (0x00 as min and 0xFF as max).
     Similarly, the 2nd and the 4th chunks specify the brightness level of the amber LEDs (0x00 as min and 0xFF as max).
     Easy enough, having only amber light requires us to set the integer level to be 0x00hh00hh.
-    By default, H9ISP cameras ensure that the brightness format is in 0xhh00hh00, locking down any non-jailbroken attempts.
+    By default, H6ISP and H9ISP cameras ensure that the brightness format is in 0xhh00hh00, locking down any non-jailbroken attempts.
 **/
 
 typedef struct HXISPCaptureStream *HXISPCaptureStreamRef;
@@ -114,26 +112,15 @@ static void SetTorchLevelHook(int result, CFNumberRef level, HXISPCaptureStreamR
         mach_port_t (*IOServiceGetMatchingService)(mach_port_t masterPort, CFDictionaryRef matching) = (mach_port_t (*)(mach_port_t, CFDictionaryRef))dlsym(IOKit, "IOServiceGetMatchingService");
         kern_return_t (*IOObjectRelease)(mach_port_t object) = (kern_return_t (*)(mach_port_t))dlsym(IOKit, "IOObjectRelease");
         if (kIOMasterPortDefault && IOServiceGetMatchingService && IOObjectRelease) {
+            int hvers[] = { 13, 10, 9, 6 };
             char AppleHXCamIn[14];
-            for (HVer = MAX_HVER; HVer > 9; --HVer) {
-                snprintf(AppleHXCamIn, sizeof(AppleHXCamIn), "AppleH%dCamIn", HVer);
+            for (int i = 0; i < sizeof(hvers) / sizeof(hvers[0]); ++i) {
+                snprintf(AppleHXCamIn, sizeof(AppleHXCamIn), "AppleH%dCamIn", hvers[i]);
                 mach_port_t hx = IOServiceGetMatchingService(*kIOMasterPortDefault, IOServiceMatching(AppleHXCamIn));
                 if (hx) {
                     IOObjectRelease(hx);
+                    HVer = hvers[i];
                     break;
-                }
-            }
-            if (HVer == 9) {
-                mach_port_t h9 = IOServiceGetMatchingService(*kIOMasterPortDefault, IOServiceMatching("AppleH9CamIn"));
-                if (h9)
-                    IOObjectRelease(h9);
-                else {
-                    mach_port_t h6 = IOServiceGetMatchingService(*kIOMasterPortDefault, IOServiceMatching("AppleH6CamIn"));
-                    if (h6) {
-                        HVer = 6;
-                        IOObjectRelease(h6);
-                    } else
-                        HVer = 0;
                 }
             }
         }

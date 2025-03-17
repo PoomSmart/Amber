@@ -4,7 +4,6 @@ else
 TARGET = iphone:clang:14.5:13.0
 export PREFIX = $(THEOS)/toolchain/Xcode11.xctoolchain/usr/bin/
 endif
-PACKAGE_VERSION = 1.2.3
 INSTALL_TARGET_PROCESSES = SpringBoard
 
 include $(THEOS)/makefiles/common.mk
