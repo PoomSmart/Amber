@@ -3,8 +3,6 @@
 #import "Header.h"
 
 #import <dlfcn.h>
-#import <mach/port.h>
-#import <mach/kern_return.h>
 
 // Tweak
 // 0 - white only (default)
@@ -40,10 +38,20 @@ int (*SetTorchColorWithGroup)(CFMutableDictionaryRef, HXISPCaptureStreamRef, HXI
 int (*SetTorchColorMode)(void *, unsigned int, unsigned short, unsigned short) = NULL;
 SInt32 (*GetCFPreferenceNumber)(CFStringRef const, CFStringRef const, SInt32) = NULL;
 
-int (*SetIndividualTorchLEDLevels)(void *, unsigned int, unsigned int) = NULL;
+int (*SetIndividualTorchLEDLevels16)(void *, unsigned int, unsigned int) = NULL;
+int (*SetIndividualTorchLEDLevels13)(void *, unsigned int, unsigned int) = NULL;
+int (*SetIndividualTorchLEDLevels10)(void *, unsigned int, unsigned int) = NULL;
+int (*SetIndividualTorchLEDLevels9)(void *, unsigned int, unsigned int) = NULL;
 
 static SInt32 amberMode() {
     return GetCFPreferenceNumber(amberModeKey, kDomain, PSAmberModeDefault);
+}
+
+static unsigned int adjustedIndividualTorchLEDLevels(unsigned int levels) {
+    // both: 0xhh00hh00 -> 0xhhhhhhhh
+    // amber only: 0xhh00hh00 -> 0x00hh00hh
+    PSAmberMode mode = (PSAmberMode)amberMode();
+    return levels && mode ? (mode == PSAmberModeBoth ? (levels | (levels >> 8)) : (levels >> 8)) : levels;
 }
 
 static void SetTorchLevelHook(int result, CFNumberRef level, HXISPCaptureStreamRef stream, HXISPCaptureGroupRef group, HXISPCaptureDeviceRef device) {
@@ -91,102 +99,147 @@ static void SetTorchLevelHook(int result, CFNumberRef level, HXISPCaptureStreamR
 
 %end
 
-%group Quad
+%group Quad16
 
-%hookf(int, SetIndividualTorchLEDLevels, void *arg0, unsigned int arg1, unsigned int levels) {
-    // both: 0xhh00hh00 -> 0xhhhhhhhh
-    // amber only: 0xhh00hh00 -> 0x00hh00hh
-    PSAmberMode mode = amberMode();
-    unsigned int finalLevels = levels && mode ? (mode == PSAmberModeBoth ? (levels | (levels >> 8)) : (levels >> 8)) : levels;
-    return %orig(arg0, arg1, finalLevels);
+%hookf(int, SetIndividualTorchLEDLevels16, void *arg0, unsigned int arg1, unsigned int levels) {
+    return %orig(arg0, arg1, adjustedIndividualTorchLEDLevels(levels));
 }
 
 %end
 
-%ctor {
-    int HVer = 0;
-    void *IOKit = dlopen("/System/Library/Frameworks/IOKit.framework/IOKit", RTLD_NOW);
-    if (IOKit) {
-        mach_port_t *kIOMasterPortDefault = (mach_port_t *)dlsym(IOKit, "kIOMasterPortDefault");
-        CFMutableDictionaryRef (*IOServiceMatching)(const char *name) = (CFMutableDictionaryRef (*)(const char *))dlsym(IOKit, "IOServiceMatching");
-        mach_port_t (*IOServiceGetMatchingService)(mach_port_t masterPort, CFDictionaryRef matching) = (mach_port_t (*)(mach_port_t, CFDictionaryRef))dlsym(IOKit, "IOServiceGetMatchingService");
-        kern_return_t (*IOObjectRelease)(mach_port_t object) = (kern_return_t (*)(mach_port_t))dlsym(IOKit, "IOObjectRelease");
-        if (kIOMasterPortDefault && IOServiceGetMatchingService && IOObjectRelease) {
-            int hvers[] = { 13, 10, 9, 6 };
-            char AppleHXCamIn[14];
-            for (int i = 0; i < sizeof(hvers) / sizeof(hvers[0]); ++i) {
-                snprintf(AppleHXCamIn, sizeof(AppleHXCamIn), "AppleH%dCamIn", hvers[i]);
-                mach_port_t hx = IOServiceGetMatchingService(*kIOMasterPortDefault, IOServiceMatching(AppleHXCamIn));
-                if (hx) {
-                    IOObjectRelease(hx);
-                    HVer = hvers[i];
-                    break;
-                }
-            }
-        }
-        dlclose(IOKit);
-        HBLogDebug(@"Detected ISP version: %d", HVer);
-    }
-    if (HVer == 0) return;
+%group Quad13
+
+%hookf(int, SetIndividualTorchLEDLevels13, void *arg0, unsigned int arg1, unsigned int levels) {
+    return %orig(arg0, arg1, adjustedIndividualTorchLEDLevels(levels));
+}
+
+%end
+
+%group Quad10
+
+%hookf(int, SetIndividualTorchLEDLevels10, void *arg0, unsigned int arg1, unsigned int levels) {
+    return %orig(arg0, arg1, adjustedIndividualTorchLEDLevels(levels));
+}
+
+%end
+
+%group Quad9
+
+%hookf(int, SetIndividualTorchLEDLevels9, void *arg0, unsigned int arg1, unsigned int levels) {
+    return %orig(arg0, arg1, adjustedIndividualTorchLEDLevels(levels));
+}
+
+%end
+
+static MSImageRef openISP(int ver) {
     char imagePath[49];
-    snprintf(imagePath, sizeof(imagePath), "/System/Library/MediaCapture/H%dISP.mediacapture", HVer);
+    snprintf(imagePath, sizeof(imagePath), "/System/Library/MediaCapture/H%dISP.mediacapture", ver);
     dlopen(imagePath, RTLD_NOW);
-    MSImageRef hxRef = MSGetImageByName(imagePath);
-    switch (HVer) {
+    return MSGetImageByName(imagePath);
+}
+
+static void bindPreference(MSImageRef image, int ver) {
+    if (GetCFPreferenceNumber || !image) return;
+    if (ver == 9) {
+        GetCFPreferenceNumber = (SInt32 (*)(CFStringRef const, CFStringRef const, SInt32))_PSFindSymbolCallable(image, "__ZN5H9ISP26H9ISPGetCFPreferenceNumberEPK10__CFStringS2_i");
+    } else if (ver == 6) {
+        GetCFPreferenceNumber = (SInt32 (*)(CFStringRef const, CFStringRef const, SInt32))_PSFindSymbolCallable(image, "__ZN5H6ISP26H6ISPGetCFPreferenceNumberEPK10__CFStringS2_i");
+    } else {
+        char symbol[80];
+        snprintf(symbol, sizeof(symbol), "__ZN6H%dISP27H%dISPGetCFPreferenceNumberEPK10__CFStringS2_i", ver, ver);
+        GetCFPreferenceNumber = (SInt32 (*)(CFStringRef const, CFStringRef const, SInt32))_PSFindSymbolCallable(image, symbol);
+    }
+}
+
+static void *findIndividualTorchLEDLevels(MSImageRef image, int ver) {
+    if (!image || ver == 6) return NULL;
+    if (ver == 9)
+        return MSFindSymbol(image, "__ZN5H9ISP11H9ISPDevice27SetIndividualTorchLEDLevelsEjj");
+    char symbol[64];
+    snprintf(symbol, sizeof(symbol), "__ZN6H%dISP12H%dISPDevice27SetIndividualTorchLEDLevelsEjj", ver, ver);
+    return MSFindSymbol(image, symbol);
+}
+
+%ctor {
+    int hvers[] = { 16, 13, 10, 9, 6 };
+    BOOL hookedQuad = NO;
+    int dualVer = 0;
+    MSImageRef dualRef = NULL;
+    for (int i = 0; i < (int)(sizeof(hvers) / sizeof(hvers[0])); ++i) {
+        int ver = hvers[i];
+        MSImageRef image = openISP(ver);
+        if (!image) continue;
+        void *quad = findIndividualTorchLEDLevels(image, ver);
+        if (quad) {
+            bindPreference(image, ver);
+            if (ver == 16) {
+                SetIndividualTorchLEDLevels16 = (int (*)(void *, unsigned int, unsigned int))quad;
+                %init(Quad16);
+            } else if (ver == 13) {
+                SetIndividualTorchLEDLevels13 = (int (*)(void *, unsigned int, unsigned int))quad;
+                %init(Quad13);
+            } else if (ver == 10) {
+                SetIndividualTorchLEDLevels10 = (int (*)(void *, unsigned int, unsigned int))quad;
+                %init(Quad10);
+            } else if (ver == 9) {
+                SetIndividualTorchLEDLevels9 = (int (*)(void *, unsigned int, unsigned int))quad;
+                %init(Quad9);
+            }
+            hookedQuad = YES;
+            HBLogDebug(@"Hooked SetIndividualTorchLEDLevels in H%dISP", ver);
+            continue;
+        }
+        if (!dualRef) {
+            dualVer = ver;
+            dualRef = image;
+        }
+    }
+    if (hookedQuad || !dualRef) return;
+    HBLogDebug(@"Using dual-LED path for H%dISP", dualVer);
+    switch (dualVer) {
         case 9: {
-            SetTorchLevel = (int (*)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureDeviceRef))MSFindSymbol(hxRef, "__ZL13SetTorchLevelPKvP18H9ISPCaptureStreamP18H9ISPCaptureDevice");
+            SetTorchLevel = (int (*)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureDeviceRef))MSFindSymbol(dualRef, "__ZL13SetTorchLevelPKvP18H9ISPCaptureStreamP18H9ISPCaptureDevice");
             if (SetTorchLevel == NULL)
-                SetTorchLevelWithGroup = (int (*)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureGroupRef, HXISPCaptureDeviceRef))MSFindSymbol(hxRef, "__ZL13SetTorchLevelPKvP18H9ISPCaptureStreamP17H9ISPCaptureGroupP18H9ISPCaptureDevice");
-            GetCFPreferenceNumber = (SInt32 (*)(CFStringRef const, CFStringRef const, SInt32))_PSFindSymbolCallable(hxRef, "__ZN5H9ISP26H9ISPGetCFPreferenceNumberEPK10__CFStringS2_i");
-            SetIndividualTorchLEDLevels = (int (*)(void *, unsigned int, unsigned int))MSFindSymbol(hxRef, "__ZN5H9ISP11H9ISPDevice27SetIndividualTorchLEDLevelsEjj");
+                SetTorchLevelWithGroup = (int (*)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureGroupRef, HXISPCaptureDeviceRef))MSFindSymbol(dualRef, "__ZL13SetTorchLevelPKvP18H9ISPCaptureStreamP17H9ISPCaptureGroupP18H9ISPCaptureDevice");
+            bindPreference(dualRef, dualVer);
             break;
         }
         case 6: {
-            SetTorchLevel = (int (*)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureDeviceRef))MSFindSymbol(hxRef, "__ZL13SetTorchLevelPKvP18H6ISPCaptureStreamP18H6ISPCaptureDevice");
-            GetCFPreferenceNumber = (SInt32 (*)(CFStringRef const, CFStringRef const, SInt32))_PSFindSymbolCallable(hxRef, "__ZN5H6ISP26H6ISPGetCFPreferenceNumberEPK10__CFStringS2_i");
-            SetTorchColor = (int (*)(CFMutableDictionaryRef, HXISPCaptureStreamRef, HXISPCaptureDeviceRef))_PSFindSymbolCallable(hxRef, "__ZL13SetTorchColorPKvP18H6ISPCaptureStreamP18H6ISPCaptureDevice");
-            SetTorchColorMode = (int (*)(void *, unsigned int, unsigned short, unsigned short))MSFindSymbol(hxRef, "__ZN5H6ISP11H6ISPDevice17SetTorchColorModeEjtt");
+            SetTorchLevel = (int (*)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureDeviceRef))MSFindSymbol(dualRef, "__ZL13SetTorchLevelPKvP18H6ISPCaptureStreamP18H6ISPCaptureDevice");
+            bindPreference(dualRef, dualVer);
+            SetTorchColor = (int (*)(CFMutableDictionaryRef, HXISPCaptureStreamRef, HXISPCaptureDeviceRef))_PSFindSymbolCallable(dualRef, "__ZL13SetTorchColorPKvP18H6ISPCaptureStreamP18H6ISPCaptureDevice");
+            SetTorchColorMode = (int (*)(void *, unsigned int, unsigned short, unsigned short))MSFindSymbol(dualRef, "__ZN5H6ISP11H6ISPDevice17SetTorchColorModeEjtt");
             break;
         }
         default: {
-            char SetTorchLevelWithGroupSymbol[88];
-            snprintf(SetTorchLevelWithGroupSymbol, sizeof(SetTorchLevelWithGroupSymbol), "__ZL13SetTorchLevelPKvP19H%dISPCaptureStreamP18H%dISPCaptureGroupP19H%dISPCaptureDevice", HVer, HVer, HVer);
-            SetTorchLevelWithGroup = (int (*)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureGroupRef, HXISPCaptureDeviceRef))MSFindSymbol(hxRef, SetTorchLevelWithGroupSymbol);
+            char SetTorchLevelWithGroupSymbol[96];
+            snprintf(SetTorchLevelWithGroupSymbol, sizeof(SetTorchLevelWithGroupSymbol), "__ZL13SetTorchLevelPKvP19H%dISPCaptureStreamP18H%dISPCaptureGroupP19H%dISPCaptureDevice", dualVer, dualVer, dualVer);
+            SetTorchLevelWithGroup = (int (*)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureGroupRef, HXISPCaptureDeviceRef))MSFindSymbol(dualRef, SetTorchLevelWithGroupSymbol);
             if (SetTorchLevelWithGroup == NULL) {
-                char SetTorchLevelSymbol[67];
-                snprintf(SetTorchLevelSymbol, sizeof(SetTorchLevelSymbol), "__ZL13SetTorchLevelPKvP19H%dISPCaptureStreamP19H%dISPCaptureDevice", HVer, HVer);
-                SetTorchLevel = (int (*)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureDeviceRef))MSFindSymbol(hxRef, SetTorchLevelSymbol);
+                char SetTorchLevelSymbol[80];
+                snprintf(SetTorchLevelSymbol, sizeof(SetTorchLevelSymbol), "__ZL13SetTorchLevelPKvP19H%dISPCaptureStreamP19H%dISPCaptureDevice", dualVer, dualVer);
+                SetTorchLevel = (int (*)(CFNumberRef, HXISPCaptureStreamRef, HXISPCaptureDeviceRef))MSFindSymbol(dualRef, SetTorchLevelSymbol);
             }
-            char GetCFPreferenceNumberSymbol[60];
-            snprintf(GetCFPreferenceNumberSymbol, sizeof(GetCFPreferenceNumberSymbol), "__ZN6H%dISP27H%dISPGetCFPreferenceNumberEPK10__CFStringS2_i", HVer, HVer);
-            GetCFPreferenceNumber = (SInt32 (*)(CFStringRef const, CFStringRef const, SInt32))_PSFindSymbolCallable(hxRef, GetCFPreferenceNumberSymbol);
-            char SetIndividualTorchLEDLevelsSymbol[58];
-            snprintf(SetIndividualTorchLEDLevelsSymbol, sizeof(SetIndividualTorchLEDLevelsSymbol), "__ZN6H%dISP12H%dISPDevice27SetIndividualTorchLEDLevelsEjj", HVer, HVer);
-            SetIndividualTorchLEDLevels = (int (*)(void *, unsigned int, unsigned int))MSFindSymbol(hxRef, SetIndividualTorchLEDLevelsSymbol);
-            char SetTorchColorWithGroupSymbol[88];
-            snprintf(SetTorchColorWithGroupSymbol, sizeof(SetTorchColorWithGroupSymbol), "__ZL13SetTorchColorPKvP19H%dISPCaptureStreamP18H%dISPCaptureGroupP19H%dISPCaptureDevice", HVer, HVer, HVer);
-            SetTorchColorWithGroup = (int (*)(CFMutableDictionaryRef, HXISPCaptureStreamRef, HXISPCaptureGroupRef, HXISPCaptureDeviceRef))_PSFindSymbolCallable(hxRef, SetTorchColorWithGroupSymbol);
-            char SetTorchColorModeSymbol[49];
-            snprintf(SetTorchColorModeSymbol, sizeof(SetTorchColorModeSymbol), "__ZN6H%dISP12H%dISPDevice17SetTorchColorModeEjtt", HVer, HVer);
-            SetTorchColorMode = (int (*)(void *, unsigned int, unsigned short, unsigned short))MSFindSymbol(hxRef, SetTorchColorModeSymbol);
+            bindPreference(dualRef, dualVer);
+            char SetTorchColorWithGroupSymbol[96];
+            snprintf(SetTorchColorWithGroupSymbol, sizeof(SetTorchColorWithGroupSymbol), "__ZL13SetTorchColorPKvP19H%dISPCaptureStreamP18H%dISPCaptureGroupP19H%dISPCaptureDevice", dualVer, dualVer, dualVer);
+            SetTorchColorWithGroup = (int (*)(CFMutableDictionaryRef, HXISPCaptureStreamRef, HXISPCaptureGroupRef, HXISPCaptureDeviceRef))_PSFindSymbolCallable(dualRef, SetTorchColorWithGroupSymbol);
+            char SetTorchColorModeSymbol[64];
+            snprintf(SetTorchColorModeSymbol, sizeof(SetTorchColorModeSymbol), "__ZN6H%dISP12H%dISPDevice17SetTorchColorModeEjtt", dualVer, dualVer);
+            SetTorchColorMode = (int (*)(void *, unsigned int, unsigned short, unsigned short))MSFindSymbol(dualRef, SetTorchColorModeSymbol);
             break;
         }
     }
     HBLogDebug(@"SetTorchLevel found: %d", SetTorchLevel != NULL);
     HBLogDebug(@"SetTorchLevelWithGroup found: %d", SetTorchLevelWithGroup != NULL);
     HBLogDebug(@"GetCFPreferenceNumber found: %d", GetCFPreferenceNumber != NULL);
-    HBLogDebug(@"SetIndividualTorchLEDLevels found: %d", SetIndividualTorchLEDLevels != NULL);
-    if (SetIndividualTorchLEDLevels != NULL) {
-        %init(Quad);
+    if (SetTorchLevelWithGroup) {
+        %init(SetTorchLevelWithGroupHook);
     } else {
-        if (SetTorchLevelWithGroup) {
-            %init(SetTorchLevelWithGroupHook);
-        } else {
-            %init(SetTorchLevelHook);
-        }
-        HBLogDebug(@"SetTorchColor found: %d", SetTorchColor != NULL);
-        HBLogDebug(@"SetTorchColorWithGroup found: %d", SetTorchColorWithGroup != NULL);
-        HBLogDebug(@"SetTorchColorMode found: %d", SetTorchColorMode != NULL);
-        %init(Dual);
+        %init(SetTorchLevelHook);
     }
+    HBLogDebug(@"SetTorchColor found: %d", SetTorchColor != NULL);
+    HBLogDebug(@"SetTorchColorWithGroup found: %d", SetTorchColorWithGroup != NULL);
+    HBLogDebug(@"SetTorchColorMode found: %d", SetTorchColorMode != NULL);
+    %init(Dual);
 }

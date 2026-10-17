@@ -2,3 +2,5 @@
 
 echo "Killing mediaserverd..."
 killall -9 mediaserverd || true
+echo "Killing cameracaptured..."
+killall -9 cameracaptured || true

@@ -4,7 +4,7 @@ else
 TARGET = iphone:clang:14.5:13.0
 export PREFIX = $(THEOS)/toolchain/Xcode11.xctoolchain/usr/bin/
 endif
-INSTALL_TARGET_PROCESSES = SpringBoard
+INSTALL_TARGET_PROCESSES = SpringBoard mediaserverd cameracaptured
 
 include $(THEOS)/makefiles/common.mk
 

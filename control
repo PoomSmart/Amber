@@ -1,7 +1,7 @@
 Package: com.ps.amber
 Name: Amber
 Depends: mobilesubstrate, gsc.camera-flash, firmware (>= 13.0)
-Version: 1.2.4
+Version: 1.3.0
 Architecture: iphoneos-arm
 Description: Amber-ify your flashlight LEDs.
 Author: PoomSmart

@@ -7,6 +7,7 @@
 		<key>Executables</key>
 		<array>
 			<string>mediaserverd</string>
+			<string>cameracaptured</string>
 		</array>
 	</dict>
 </dict>
